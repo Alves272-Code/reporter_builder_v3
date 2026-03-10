@@ -3,6 +3,7 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 try {
+    rb_require_auth('json');
     $db = rb_db();
 
     $field = isset($_GET["field"]) ? trim((string)$_GET["field"]) : "";

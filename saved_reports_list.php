@@ -7,11 +7,7 @@ $shared_reports = array();
 try {
     rb_ensure_saved_reports_table();
     $db = rb_db();
-    $user = rb_current_user();
-
-    if ($user === '') {
-        throw new Exception('Utilizador não identificado');
-    }
+    $user = rb_require_auth('page');
 
     rb_ensure_report_shares_table();
 
@@ -140,7 +136,7 @@ try {
                                 <small class="text-muted"><i class="fa fa-user"></i> Dono: <?php echo htmlspecialchars($report['created_by'], ENT_QUOTES, 'UTF-8'); ?></small><br>
                                 <small class="text-muted"><i class="fa fa-calendar"></i> <?php echo date('d/m/Y H:i', strtotime($report['created_at'])); ?></small>
                                 <div class="mt-3">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="carregarRelatorio(<?php echo (int)$report['id']; ?>)"><i class="fa fa-folder-open"></i> Ver relatório</button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="carregarRelatorio(<?php echo (int)$report['id']; ?>, true)"><i class="fa fa-folder-open"></i> Ver relatório</button>
                                 </div>
                             </div>
                         </div>
@@ -179,8 +175,10 @@ try {
 <script>
 let currentShareReportId = 0;
 
-function carregarRelatorio(id) {
-    window.location.href = 'index.php?report_id=' + encodeURIComponent(id);
+function carregarRelatorio(id, shared) {
+    var url = 'index.php?report_id=' + encodeURIComponent(id);
+    if (shared) url += '&shared=1';
+    window.location.href = url;
 }
 
 function closeShareModal() {
