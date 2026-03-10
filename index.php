@@ -61,6 +61,12 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
         $rb_boot_report_error = $e->getMessage();
     }
 }
+
+
+$rb_force_copy_mode = false;
+if ($rb_boot_report && is_array($rb_boot_report)) {
+    $rb_force_copy_mode = (!empty($rb_boot_report['isSharedView']) || empty($rb_boot_report['isOwner']));
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt">
@@ -208,7 +214,7 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
                         <button type="button" onclick="refreshPreview()" class="btn btn-action-laranja"><i class="fa fa-eye"></i> Visualizar</button>
                         <button type="button" onclick="exportarExcel()" class="btn btn-secondary"><i class="fa fa-file-excel-o"></i> Excel</button>
                         <button type="button" onclick="exportarCSV()" class="btn btn-secondary"><i class="fa fa-file-text-o"></i> CSV</button>
-                        <button type="button" id="save-report-btn" onclick="saveReport()" class="btn btn-info text-white"><i class="fa fa-save"></i> Guardar</button>
+                        <button type="button" id="save-report-btn" onclick="<?php echo $rb_force_copy_mode ? 'createReportCopy()' : 'saveReport()'; ?>" class="btn btn-info text-white"><i class="fa <?php echo $rb_force_copy_mode ? 'fa-copy' : 'fa-save'; ?>"></i> <?php echo $rb_force_copy_mode ? 'Criar cópia' : 'Guardar'; ?></button>
                     </div>
                 </div>
             </div>
@@ -241,7 +247,7 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
 <script src="../assets/js/popper.min.js"></script>
 <script src="../assets/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="builder.js?v=11"></script>
+<script src="builder.js?v=12"></script>
 <script>
 window.RB_HAS_DB = <?php echo $rb_has_db ? 'true' : 'false'; ?>;
 window.RB_BOOT_REPORT = <?php echo $rb_boot_report ? json_encode($rb_boot_report, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : 'null'; ?>;
