@@ -23,6 +23,15 @@ function rb_current_user() {
     return '';
 }
 
+function rb_base_url() {
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $scheme = $https ? 'https' : 'http';
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+    $scriptDir = isset($_SERVER['SCRIPT_NAME']) ? dirname($_SERVER['SCRIPT_NAME']) : '';
+    $scriptDir = rtrim(str_replace('\\', '/', $scriptDir), '/');
+    return $scheme . '://' . $host . ($scriptDir ? $scriptDir : '');
+}
+
 function rb_json($data, $code = 200) {
     http_response_code($code);
     header('Content-Type: application/json; charset=utf-8');
@@ -128,7 +137,8 @@ function rb_ensure_saved_reports_table() {
         "description" => "ALTER TABLE saved_reports ADD COLUMN description TEXT NULL",
         "status" => "ALTER TABLE saved_reports ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1",
         "created_by" => "ALTER TABLE saved_reports ADD COLUMN created_by VARCHAR(255) NOT NULL DEFAULT ''",
-        "deleted_at" => "ALTER TABLE saved_reports ADD COLUMN deleted_at DATETIME NULL"
+        "deleted_at" => "ALTER TABLE saved_reports ADD COLUMN deleted_at DATETIME NULL",
+        "share_token" => "ALTER TABLE saved_reports ADD COLUMN share_token VARCHAR(64) NULL"
     ];
 
     foreach ($columns as $column => $alter) {
@@ -137,6 +147,13 @@ function rb_ensure_saved_reports_table() {
             mysqli_query($db, $alter);
         }
     }
+}
+
+function rb_table_has_column($db, $table, $column) {
+    $safeTable = mysqli_real_escape_string($db, $table);
+    $safeColumn = mysqli_real_escape_string($db, $column);
+    $res = mysqli_query($db, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+    return $res && mysqli_num_rows($res) > 0;
 }
 
 function rb_translate_filter_operator($op, $value) {
