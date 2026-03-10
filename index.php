@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/config.php';
-$user_name = isset($_SESSION['UtilizadorNome']) ? $_SESSION['UtilizadorNome'] : $_SESSION['UtilizadorEmail'];
+$user_name = '';
+if (isset($_SESSION['UtilizadorNome']) && trim((string)$_SESSION['UtilizadorNome']) !== '') {
+    $user_name = (string)$_SESSION['UtilizadorNome'];
+} elseif (isset($_SESSION['UtilizadorEmail']) && trim((string)$_SESSION['UtilizadorEmail']) !== '') {
+    $user_name = (string)$_SESSION['UtilizadorEmail'];
+}
 $rb_has_db = empty($rb_db_error);
 $rb_boot_report = null;
 $rb_boot_report_error = null;
@@ -11,30 +16,49 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
         $db = rb_db();
         $user = rb_current_user();
         $report_id = (int)$_GET['report_id'];
+        $share_token = isset($_GET['token']) ? trim((string)$_GET['token']) : '';
 
-        if ($user === '') {
-            throw new Exception('Utilizador não identificado');
+        $sql = "SELECT * FROM saved_reports WHERE id = " . (int)$report_id . " LIMIT 1";
+        $res = mysqli_query($db, $sql);
+        if ($res === false) {
+            throw new Exception(mysqli_error($db));
         }
-
-        $row = rb_prepare_and_fetch_one(
-            $db,
-            "SELECT id, name, description, config, status, created_at FROM saved_reports WHERE id = ? AND created_by = ?",
-            array($report_id, $user)
-        );
+        $row = mysqli_fetch_assoc($res);
 
         if (!$row) {
             $rb_boot_report_error = 'Relatório não encontrado';
         } else {
-            $decoded = json_decode($row['config'], true);
-            $rb_boot_report = array(
-                'reportId' => (int)$row['id'],
-                'name' => (string)$row['name'],
-                'description' => (string)$row['description'],
-                'status' => isset($row['status']) ? (int)$row['status'] : 1,
-                'createdAt' => (string)$row['created_at'],
-                'config' => $decoded === null ? $row['config'] : $decoded,
-                'rawConfig' => $row['config']
-            );
+            $hasCreatedBy = array_key_exists('created_by', $row);
+            $hasShareToken = array_key_exists('share_token', $row);
+            $isOwner = ($hasCreatedBy && $user !== '' && (string)$row['created_by'] === $user);
+            $isSharedAccess = ($share_token !== '' && $hasShareToken && hash_equals((string)$row['share_token'], $share_token));
+            $isSharedWithUser = false;
+            if ($user !== '') {
+                rb_ensure_report_shares_table();
+                $shareRow = rb_prepare_and_fetch_one(
+                    $db,
+                    "SELECT id FROM report_shares WHERE report_id = ? AND shared_with = ? AND active = 1",
+                    array($report_id, $user)
+                );
+                $isSharedWithUser = $shareRow ? true : false;
+            }
+            $canAccess = $isSharedAccess || $isOwner || $isSharedWithUser || (!$hasCreatedBy && $user !== '');
+
+            if (!$canAccess) {
+                $rb_boot_report_error = 'Relatório não encontrado';
+            } else {
+                $decoded = json_decode($row['config'], true);
+                $rb_boot_report = array(
+                    'reportId' => (int)$row['id'],
+                    'name' => (string)$row['name'],
+                    'description' => isset($row['description']) ? (string)$row['description'] : '',
+                    'status' => isset($row['status']) ? (int)$row['status'] : 1,
+                    'createdAt' => isset($row['created_at']) ? (string)$row['created_at'] : '',
+                    'isOwner' => $isOwner,
+                    'config' => $decoded === null ? $row['config'] : $decoded,
+                    'rawConfig' => $row['config']
+                );
+            }
         }
     } catch (Throwable $e) {
         $rb_boot_report_error = $e->getMessage();

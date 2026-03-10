@@ -3,6 +3,8 @@ let selectedFields = new Set();
 let currentPage = 1;
 let currentLimit = 50;
 let totalPages = 1;
+let currentReportId = null;
+let currentReportOwner = true;
 window.RB_FIELD_META = window.RB_FIELD_META || {};
 
 function escapeHtml(str) {
@@ -627,23 +629,42 @@ function saveReport() {
         return;
     }
 
-    const name = prompt('Nome do relatório:');
+    const payload = buildPayload();
+    if (!Array.isArray(payload.tabelas) || payload.tabelas.length === 0 || !Array.isArray(payload.campos) || payload.campos.length === 0) {
+        alert('Não é possível guardar um relatório vazio.');
+        return;
+    }
+
+    if (!currentReportOwner && currentReportId) {
+        alert('Este relatório foi partilhado consigo. Pode visualizar e atualizar, mas só o proprietário pode alterar/guardar.');
+        return;
+    }
+
+    const nomeAtual = (window.RB_BOOT_REPORT && window.RB_BOOT_REPORT.name) ? window.RB_BOOT_REPORT.name : '';
+    const descAtual = (window.RB_BOOT_REPORT && window.RB_BOOT_REPORT.description) ? window.RB_BOOT_REPORT.description : '';
+    const name = prompt('Nome do relatório:', nomeAtual);
     if (!name) return;
-    const description = prompt('Descrição (opcional):') || '';
+    const description = prompt('Descrição (opcional):', descAtual) || '';
 
     fetch('saved_reports.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            report_id: currentReportId,
             name: name,
             description: description,
-            config: buildPayload()
+            config: payload
         })
     })
     .then(function(r) { return r.json(); })
     .then(function(resp) {
         if (!resp.success) throw new Error(resp.message || 'Erro ao guardar');
-        alert('Relatório guardado com sucesso!');
+        if (resp.report_id) currentReportId = Number(resp.report_id);
+        if (window.RB_BOOT_REPORT && typeof window.RB_BOOT_REPORT === 'object') {
+            window.RB_BOOT_REPORT.name = name;
+            window.RB_BOOT_REPORT.description = description;
+        }
+        alert(resp.updated ? 'Relatório atualizado com sucesso!' : 'Relatório guardado com sucesso!');
     })
     .catch(function(err) {
         console.error(err);
@@ -747,6 +768,8 @@ function clearAll(withConfirm) {
 
     selectedTables = [];
     selectedFields = new Set();
+    currentReportId = null;
+    currentReportOwner = true;
     currentPage = 1;
     currentLimit = 50;
     totalPages = 1;
@@ -779,6 +802,8 @@ $(document).ready(function() {
         try {
             if (window.RB_BOOT_REPORT) {
                 const boot = window.RB_BOOT_REPORT;
+                currentReportId = boot && boot.reportId ? Number(boot.reportId) : null;
+                currentReportOwner = !(boot && boot.isOwner === false);
                 const bootConfig = (boot && typeof boot === 'object' && !Array.isArray(boot))
                     ? (boot.config ?? boot.rawConfig ?? boot)
                     : boot;
