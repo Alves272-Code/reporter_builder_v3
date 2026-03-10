@@ -98,6 +98,7 @@ try {
                                 <small class="text-muted"><i class="fa fa-calendar"></i> <?php echo date('d/m/Y H:i', strtotime($report['created_at'])); ?></small>
                                 <div class="mt-3 d-flex flex-wrap" style="gap:8px;">
                                     <button class="btn btn-sm btn-outline-primary" onclick="carregarRelatorio(<?php echo (int)$report['id']; ?>)"><i class="fa fa-folder-open"></i> Carregar</button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="partilharRelatorio(<?php echo (int)$report['id']; ?>)"><i class="fa fa-share-alt"></i> Partilhar</button>
                                     <button class="btn btn-sm btn-outline-danger" onclick="eliminarRelatorio(<?php echo (int)$report['id']; ?>)"><i class="fa fa-trash"></i> Mover para apagados</button>
                                 </div>
                             </div>
@@ -121,6 +122,22 @@ try {
 function carregarRelatorio(id) {
     window.location.href = 'index.php?report_id=' + encodeURIComponent(id);
 }
+
+function partilharRelatorio(id) {
+    fetch('share_report.php?id=' + id, { method: 'POST' })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if (!data.success || !data.share_url) throw new Error(data.message || 'Erro ao partilhar');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(data.share_url).then(function(){
+                    alert('Link de partilha copiado para a área de transferência.');
+                });
+            }
+            prompt('Copie o link de partilha:', data.share_url);
+        })
+        .catch(function(err){ alert(err.message); });
+}
+
 function eliminarRelatorio(id) {
     if (!confirm('Pretende mover este relatório para apagados?')) return;
     fetch('delete_report.php?id=' + id)
