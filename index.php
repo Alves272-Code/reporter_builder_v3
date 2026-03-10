@@ -11,16 +11,28 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
         $db = rb_db();
         $user = rb_current_user();
         $report_id = (int)$_GET['report_id'];
+        $share_token = isset($_GET['token']) ? trim((string)$_GET['token']) : '';
 
         if ($user === '') {
             throw new Exception('Utilizador não identificado');
         }
 
-        $row = rb_prepare_and_fetch_one(
-            $db,
-            "SELECT id, name, description, config, status, created_at FROM saved_reports WHERE id = ? AND created_by = ?",
-            array($report_id, $user)
-        );
+        $row = null;
+        if ($share_token !== '') {
+            $row = rb_prepare_and_fetch_one(
+                $db,
+                "SELECT id, name, description, config, status, created_at, created_by FROM saved_reports WHERE id = ? AND share_token = ?",
+                array($report_id, $share_token)
+            );
+        }
+
+        if (!$row) {
+            $row = rb_prepare_and_fetch_one(
+                $db,
+                "SELECT id, name, description, config, status, created_at, created_by FROM saved_reports WHERE id = ? AND created_by = ?",
+                array($report_id, $user)
+            );
+        }
 
         if (!$row) {
             $rb_boot_report_error = 'Relatório não encontrado';
@@ -32,6 +44,7 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
                 'description' => (string)$row['description'],
                 'status' => isset($row['status']) ? (int)$row['status'] : 1,
                 'createdAt' => (string)$row['created_at'],
+                'isOwner' => ((string)$row['created_by'] === $user),
                 'config' => $decoded === null ? $row['config'] : $decoded,
                 'rawConfig' => $row['config']
             );
