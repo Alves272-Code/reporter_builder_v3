@@ -18,11 +18,12 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
         $report_id = (int)$_GET['report_id'];
         $share_token = isset($_GET['token']) ? trim((string)$_GET['token']) : '';
 
-        $row = rb_prepare_and_fetch_one(
-            $db,
-            "SELECT * FROM saved_reports WHERE id = ?",
-            array($report_id)
-        );
+        $sql = "SELECT * FROM saved_reports WHERE id = " . (int)$report_id . " LIMIT 1";
+        $res = mysqli_query($db, $sql);
+        if ($res === false) {
+            throw new Exception(mysqli_error($db));
+        }
+        $row = mysqli_fetch_assoc($res);
 
         if (!$row) {
             $rb_boot_report_error = 'Relatório não encontrado';

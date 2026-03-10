@@ -4,12 +4,33 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-require_once __DIR__ . '/../ligaBD.php';
+$rb_db_error = '';
+$rb_ligacao = false;
+$rb_liga_paths = array(
+    __DIR__ . '/../ligaBD.php',
+    dirname(__DIR__) . '/ligaBD.php',
+    __DIR__ . '/ligaBD.php'
+);
+
+foreach ($rb_liga_paths as $rb_liga_path) {
+    if (is_file($rb_liga_path)) {
+        require_once $rb_liga_path;
+        $rb_ligacao = true;
+        break;
+    }
+}
+
+if (!$rb_ligacao) {
+    $rb_db_error = 'Ficheiro ligaBD.php não encontrado. Verifique a instalação do módulo.';
+}
 
 function rb_db() {
-    global $ligacao;
+    global $ligacao, $rb_db_error;
 
-    if (!$ligacao) {
+    if (!isset($ligacao) || !$ligacao) {
+        if (!empty($rb_db_error)) {
+            throw new Exception($rb_db_error);
+        }
         throw new Exception("Ligação à base de dados não disponível.");
     }
 
