@@ -4,23 +4,85 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-require_once __DIR__ . '/../ligaBD.php';
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
+
+$rb_db_error = '';
+$rb_ligacao = false;
+$rb_liga_paths = array(
+    __DIR__ . '/../ligaBD.php',
+    dirname(__DIR__) . '/ligaBD.php',
+    __DIR__ . '/ligaBD.php'
+);
+
+foreach ($rb_liga_paths as $rb_liga_path) {
+    if (is_file($rb_liga_path)) {
+        require_once $rb_liga_path;
+        $rb_ligacao = true;
+        break;
+    }
+}
+
+if (!$rb_ligacao) {
+    $rb_db_error = 'Ficheiro ligaBD.php não encontrado. Verifique a instalação do módulo.';
+}
 
 function rb_db() {
-    global $ligacao;
+    global $ligacao, $rb_db_error;
 
-    if (!$ligacao) {
+    if (!isset($ligacao) || !$ligacao) {
+        if (!empty($rb_db_error)) {
+            throw new Exception($rb_db_error);
+        }
         throw new Exception("Ligação à base de dados não disponível.");
     }
 
     return $ligacao;
 }
 
-function rb_current_user() {
-    if (isset($_SESSION['UtilizadorEmail']) && trim((string)$_SESSION['UtilizadorEmail']) !== '') {
-        return trim((string)$_SESSION['UtilizadorEmail']);
+function rb_session_pick($keys = array()) {
+    foreach ($keys as $key) {
+        if (isset($_SESSION[$key])) {
+            $value = trim((string)$_SESSION[$key]);
+            if ($value !== '') return $value;
+        }
     }
     return '';
+}
+
+function rb_current_user() {
+    $direct = rb_session_pick(array('UtilizadorEmail', 'utilizadorEmail', 'Email', 'email', 'UserEmail', 'user_email'));
+    if ($direct !== '') return $direct;
+
+    foreach ($_SESSION as $key => $value) {
+        if (!is_scalar($value)) continue;
+        $candidate = trim((string)$value);
+        if ($candidate === '') continue;
+        if (preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]+$/', $candidate)) {
+            $k = strtolower((string)$key);
+            if (strpos($k, 'email') !== false || strpos($k, 'utilizador') !== false || strpos($k, 'user') !== false) {
+                return $candidate;
+            }
+        }
+    }
+
+    return '';
+}
+
+function rb_current_user_name() {
+    $name = rb_session_pick(array('UtilizadorNome', 'utilizadorNome', 'Nome', 'nome', 'UserName', 'username'));
+    if ($name !== '') return $name;
+    return rb_current_user();
+}
+
+function rb_base_url() {
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $scheme = $https ? 'https' : 'http';
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+    $scriptDir = isset($_SERVER['SCRIPT_NAME']) ? dirname($_SERVER['SCRIPT_NAME']) : '';
+    $scriptDir = rtrim(str_replace('\\', '/', $scriptDir), '/');
+    return $scheme . '://' . $host . ($scriptDir ? $scriptDir : '');
 }
 
 function rb_json($data, $code = 200) {
@@ -128,7 +190,8 @@ function rb_ensure_saved_reports_table() {
         "description" => "ALTER TABLE saved_reports ADD COLUMN description TEXT NULL",
         "status" => "ALTER TABLE saved_reports ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1",
         "created_by" => "ALTER TABLE saved_reports ADD COLUMN created_by VARCHAR(255) NOT NULL DEFAULT ''",
-        "deleted_at" => "ALTER TABLE saved_reports ADD COLUMN deleted_at DATETIME NULL"
+        "deleted_at" => "ALTER TABLE saved_reports ADD COLUMN deleted_at DATETIME NULL",
+        "share_token" => "ALTER TABLE saved_reports ADD COLUMN share_token VARCHAR(64) NULL"
     ];
 
     foreach ($columns as $column => $alter) {
@@ -137,6 +200,60 @@ function rb_ensure_saved_reports_table() {
             mysqli_query($db, $alter);
         }
     }
+}
+
+function rb_table_has_column($db, $table, $column) {
+    $safeTable = mysqli_real_escape_string($db, $table);
+    $safeColumn = mysqli_real_escape_string($db, $column);
+    $res = mysqli_query($db, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+    return $res && mysqli_num_rows($res) > 0;
+}
+
+function rb_ensure_report_shares_table() {
+    $db = rb_db();
+
+    $sql = "
+    CREATE TABLE IF NOT EXISTS report_shares (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        report_id INT NOT NULL,
+        shared_by VARCHAR(255) NOT NULL,
+        shared_with VARCHAR(255) NOT NULL,
+        created_at DATETIME NOT NULL,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        UNIQUE KEY uniq_report_user (report_id, shared_with),
+        INDEX idx_shared_with (shared_with),
+        INDEX idx_report_id (report_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ";
+
+    mysqli_query($db, $sql);
+}
+
+function rb_get_active_users($db, $excludeEmail = '') {
+    $out = array();
+    if (!rb_table_has_column($db, 'utilizadores', 'Email')) {
+        return $out;
+    }
+
+    $nameCol = rb_table_has_column($db, 'utilizadores', 'Nome') ? 'Nome' : (rb_table_has_column($db, 'utilizadores', 'Utilizador') ? 'Utilizador' : 'Email');
+    $hasAtivo = rb_table_has_column($db, 'utilizadores', 'Ativo');
+
+    $sql = "SELECT `Email` AS email, `$nameCol` AS nome FROM utilizadores";
+    if ($hasAtivo) {
+        $sql .= " WHERE (Ativo = 1 OR Ativo = '1' OR LOWER(CAST(Ativo AS CHAR)) = 'ativo')";
+    }
+    $sql .= " ORDER BY `$nameCol` ASC";
+
+    $rows = rb_prepare_and_fetch_all($db, $sql, array());
+    foreach ($rows as $r) {
+        $email = isset($r['email']) ? trim((string)$r['email']) : '';
+        if ($email === '') continue;
+        if ($excludeEmail !== '' && strcasecmp($email, $excludeEmail) === 0) continue;
+        $nome = isset($r['nome']) && trim((string)$r['nome']) !== '' ? trim((string)$r['nome']) : $email;
+        $out[] = array('email' => $email, 'name' => $nome);
+    }
+
+    return $out;
 }
 
 function rb_translate_filter_operator($op, $value) {
