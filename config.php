@@ -149,6 +149,13 @@ function rb_ensure_saved_reports_table() {
     }
 }
 
+function rb_table_has_column($db, $table, $column) {
+    $safeTable = mysqli_real_escape_string($db, $table);
+    $safeColumn = mysqli_real_escape_string($db, $column);
+    $res = mysqli_query($db, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+    return $res && mysqli_num_rows($res) > 0;
+}
+
 function rb_translate_filter_operator($op, $value) {
     $op = strtolower(trim((string)$op));
 
