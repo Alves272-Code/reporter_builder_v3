@@ -718,7 +718,7 @@ function applyLoadedConfig(config) {
 
     config = normalizedConfig;
 
-    clearAll(false);
+    clearAll(false, false);
 
     currentPage = Number(config.page || 1);
     currentLimit = Number(config.limit || 50);
@@ -791,15 +791,24 @@ function applyLoadedConfig(config) {
     loadNextTable();
 }
 
-function clearAll(withConfirm) {
+function clearAll(withConfirm, resetReportContext) {
     if (typeof withConfirm === 'undefined') withConfirm = true;
+    if (typeof resetReportContext === 'undefined') resetReportContext = true;
     if (withConfirm && !confirm('Deseja limpar toda a configuração atual?')) return;
 
     selectedTables = [];
     selectedFields = new Set();
+<<<<<<< codex/ajustar-relatorios-partilhados-e-sessoes-6fc9fk
+    if (resetReportContext) {
+        currentReportId = null;
+        currentReportOwner = true;
+        currentReportSharedView = false;
+    }
+=======
     currentReportId = null;
     currentReportOwner = true;
     currentReportSharedView = false;
+>>>>>>> main
     currentPage = 1;
     currentLimit = 50;
     totalPages = 1;
