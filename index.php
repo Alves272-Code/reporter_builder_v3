@@ -247,7 +247,11 @@ if ($rb_boot_report && is_array($rb_boot_report)) {
 <script src="../assets/js/popper.min.js"></script>
 <script src="../assets/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<<<<<<< codex/ajustar-relatorios-partilhados-e-sessoes-6fc9fk
 <script src="builder.js?v=13"></script>
+=======
+<script src="builder.js?v=12"></script>
+>>>>>>> main
 <script>
 window.RB_HAS_DB = <?php echo $rb_has_db ? 'true' : 'false'; ?>;
 window.RB_BOOT_REPORT = <?php echo $rb_boot_report ? json_encode($rb_boot_report, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : 'null'; ?>;

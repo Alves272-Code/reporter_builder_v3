@@ -798,11 +798,17 @@ function clearAll(withConfirm, resetReportContext) {
 
     selectedTables = [];
     selectedFields = new Set();
+<<<<<<< codex/ajustar-relatorios-partilhados-e-sessoes-6fc9fk
     if (resetReportContext) {
         currentReportId = null;
         currentReportOwner = true;
         currentReportSharedView = false;
     }
+=======
+    currentReportId = null;
+    currentReportOwner = true;
+    currentReportSharedView = false;
+>>>>>>> main
     currentPage = 1;
     currentLimit = 50;
     totalPages = 1;
