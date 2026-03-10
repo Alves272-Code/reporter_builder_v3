@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 header('Content-Type: application/json; charset=utf-8');
 try {
+    rb_require_auth('json');
     rb_db();
     $traducao = require __DIR__ . '/traducao.php';
 
