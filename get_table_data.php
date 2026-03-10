@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 try {
+    rb_require_auth('json');
     $db = rb_db();
     $traducao = require __DIR__ . '/traducao.php';
     $table = isset($_GET['table']) ? $_GET['table'] : '';
