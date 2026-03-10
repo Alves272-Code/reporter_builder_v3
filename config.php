@@ -4,12 +4,33 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-require_once __DIR__ . '/../ligaBD.php';
+$rb_db_error = '';
+$rb_ligacao = false;
+$rb_liga_paths = array(
+    __DIR__ . '/../ligaBD.php',
+    dirname(__DIR__) . '/ligaBD.php',
+    __DIR__ . '/ligaBD.php'
+);
+
+foreach ($rb_liga_paths as $rb_liga_path) {
+    if (is_file($rb_liga_path)) {
+        require_once $rb_liga_path;
+        $rb_ligacao = true;
+        break;
+    }
+}
+
+if (!$rb_ligacao) {
+    $rb_db_error = 'Ficheiro ligaBD.php não encontrado. Verifique a instalação do módulo.';
+}
 
 function rb_db() {
-    global $ligacao;
+    global $ligacao, $rb_db_error;
 
-    if (!$ligacao) {
+    if (!isset($ligacao) || !$ligacao) {
+        if (!empty($rb_db_error)) {
+            throw new Exception($rb_db_error);
+        }
         throw new Exception("Ligação à base de dados não disponível.");
     }
 
@@ -21,6 +42,15 @@ function rb_current_user() {
         return trim((string)$_SESSION['UtilizadorEmail']);
     }
     return '';
+}
+
+function rb_base_url() {
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $scheme = $https ? 'https' : 'http';
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+    $scriptDir = isset($_SERVER['SCRIPT_NAME']) ? dirname($_SERVER['SCRIPT_NAME']) : '';
+    $scriptDir = rtrim(str_replace('\\', '/', $scriptDir), '/');
+    return $scheme . '://' . $host . ($scriptDir ? $scriptDir : '');
 }
 
 function rb_json($data, $code = 200) {
@@ -128,7 +158,8 @@ function rb_ensure_saved_reports_table() {
         "description" => "ALTER TABLE saved_reports ADD COLUMN description TEXT NULL",
         "status" => "ALTER TABLE saved_reports ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1",
         "created_by" => "ALTER TABLE saved_reports ADD COLUMN created_by VARCHAR(255) NOT NULL DEFAULT ''",
-        "deleted_at" => "ALTER TABLE saved_reports ADD COLUMN deleted_at DATETIME NULL"
+        "deleted_at" => "ALTER TABLE saved_reports ADD COLUMN deleted_at DATETIME NULL",
+        "share_token" => "ALTER TABLE saved_reports ADD COLUMN share_token VARCHAR(64) NULL"
     ];
 
     foreach ($columns as $column => $alter) {
@@ -137,6 +168,13 @@ function rb_ensure_saved_reports_table() {
             mysqli_query($db, $alter);
         }
     }
+}
+
+function rb_table_has_column($db, $table, $column) {
+    $safeTable = mysqli_real_escape_string($db, $table);
+    $safeColumn = mysqli_real_escape_string($db, $column);
+    $res = mysqli_query($db, "SHOW COLUMNS FROM `$safeTable` LIKE '$safeColumn'");
+    return $res && mysqli_num_rows($res) > 0;
 }
 
 function rb_translate_filter_operator($op, $value) {
