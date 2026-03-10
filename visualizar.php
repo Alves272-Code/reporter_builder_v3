@@ -8,6 +8,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 try {
 
+    rb_require_auth('json');
     $db = rb_db();
 
     $raw = file_get_contents('php://input');
