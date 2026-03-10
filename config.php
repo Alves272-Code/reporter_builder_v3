@@ -76,6 +76,23 @@ function rb_current_user_name() {
     return rb_current_user();
 }
 
+function rb_require_auth($mode = 'json') {
+    $user = rb_current_user();
+    if ($user !== '') {
+        return $user;
+    }
+
+    if ($mode === 'page') {
+        $target = '../index.php';
+        if (!headers_sent()) {
+            header('Location: ' . $target);
+        }
+        exit;
+    }
+
+    rb_json(array('success' => false, 'message' => 'Utilizador não identificado'), 401);
+}
+
 function rb_base_url() {
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
     $scheme = $https ? 'https' : 'http';

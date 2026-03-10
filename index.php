@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+$user = rb_require_auth('page');
 $user_name = rb_current_user_name();
 $rb_has_db = empty($rb_db_error);
 $rb_boot_report = null;
@@ -9,7 +10,6 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
     try {
         rb_ensure_saved_reports_table();
         $db = rb_db();
-        $user = rb_current_user();
         $report_id = (int)$_GET['report_id'];
         $share_token = isset($_GET['token']) ? trim((string)$_GET['token']) : '';
 

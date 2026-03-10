@@ -7,11 +7,7 @@ $shared_reports = array();
 try {
     rb_ensure_saved_reports_table();
     $db = rb_db();
-    $user = rb_current_user();
-
-    if ($user === '') {
-        throw new Exception('Utilizador não identificado');
-    }
+    $user = rb_require_auth('page');
 
     rb_ensure_report_shares_table();
 
