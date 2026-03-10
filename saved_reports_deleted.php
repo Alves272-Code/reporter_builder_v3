@@ -6,11 +6,7 @@ $reports = array();
 try {
     rb_ensure_saved_reports_table();
     $db = rb_db();
-    $user = rb_current_user();
-
-    if ($user === '') {
-        throw new Exception('Utilizador não identificado');
-    }
+    $user = rb_require_auth('page');
 
     $reports = rb_prepare_and_fetch_all(
         $db,

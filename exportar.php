@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 
 try {
+    rb_require_auth('json');
     $db = rb_db();
     $traducao = file_exists(__DIR__ . '/traducao.php') ? require __DIR__ . '/traducao.php' : array();
     $data = json_decode(file_get_contents('php://input'), true);

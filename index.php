@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+$user = rb_require_auth('page');
 $user_name = rb_current_user_name();
 $rb_has_db = empty($rb_db_error);
 $rb_boot_report = null;
@@ -9,8 +10,8 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
     try {
         rb_ensure_saved_reports_table();
         $db = rb_db();
-        $user = rb_current_user();
         $report_id = (int)$_GET['report_id'];
+        $shared_view = isset($_GET['shared']) && (string)$_GET['shared'] === '1';
         $share_token = isset($_GET['token']) ? trim((string)$_GET['token']) : '';
 
         $sql = "SELECT * FROM saved_reports WHERE id = " . (int)$report_id . " LIMIT 1";
@@ -50,6 +51,7 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
                     'status' => isset($row['status']) ? (int)$row['status'] : 1,
                     'createdAt' => isset($row['created_at']) ? (string)$row['created_at'] : '',
                     'isOwner' => $isOwner,
+                    'isSharedView' => !$isOwner && ($shared_view || $isSharedAccess || $isSharedWithUser),
                     'config' => $decoded === null ? $row['config'] : $decoded,
                     'rawConfig' => $row['config']
                 );
