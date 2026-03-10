@@ -623,7 +623,8 @@ function exportarCSV() {
     });
 }
 
-function saveReport() {
+function saveReport(asCopy) {
+    asCopy = !!asCopy;
     if (selectedTables.length === 0 || selectedFields.size === 0) {
         alert('Selecione tabelas e campos antes de guardar.');
         return;
@@ -635,8 +636,8 @@ function saveReport() {
         return;
     }
 
-    if (!currentReportOwner && currentReportId) {
-        alert('Este relatório foi partilhado consigo. Pode visualizar e atualizar, mas só o proprietário pode alterar/guardar.');
+    if (!currentReportOwner && currentReportId && !asCopy) {
+        alert('Este relatório foi partilhado consigo. Use “Criar cópia”.');
         return;
     }
 
@@ -650,7 +651,7 @@ function saveReport() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            report_id: currentReportId,
+            report_id: asCopy ? null : currentReportId,
             name: name,
             description: description,
             config: payload
@@ -670,6 +671,10 @@ function saveReport() {
         console.error(err);
         alert('Erro ao guardar: ' + err.message);
     });
+}
+
+function createReportCopy() {
+    saveReport(true);
 }
 
 function loadReport() {
@@ -788,6 +793,12 @@ function clearAll(withConfirm) {
     );
 
     try { $('#table-select').val('').trigger('change'); } catch (e) {}
+
+    const saveBtn = document.getElementById('save-report-btn');
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="fa fa-save"></i> Guardar';
+        saveBtn.onclick = function(){ saveReport(false); };
+    }
 }
 
 $(document).ready(function() {
@@ -804,6 +815,16 @@ $(document).ready(function() {
                 const boot = window.RB_BOOT_REPORT;
                 currentReportId = boot && boot.reportId ? Number(boot.reportId) : null;
                 currentReportOwner = !(boot && boot.isOwner === false);
+                const saveBtn = document.getElementById('save-report-btn');
+                if (saveBtn) {
+                    if (currentReportOwner) {
+                        saveBtn.innerHTML = '<i class="fa fa-save"></i> Guardar';
+                        saveBtn.onclick = function(){ saveReport(false); };
+                    } else {
+                        saveBtn.innerHTML = '<i class="fa fa-copy"></i> Criar cópia';
+                        saveBtn.onclick = function(){ createReportCopy(); };
+                    }
+                }
                 const bootConfig = (boot && typeof boot === 'object' && !Array.isArray(boot))
                     ? (boot.config ?? boot.rawConfig ?? boot)
                     : boot;
@@ -840,6 +861,7 @@ window.setLimitFromUI = setLimitFromUI;
 window.exportarExcel = exportarExcel;
 window.exportarCSV = exportarCSV;
 window.saveReport = saveReport;
+window.createReportCopy = createReportCopy;
 window.loadReport = loadReport;
 window.clearAll = clearAll;
 window.applyLoadedConfig = applyLoadedConfig;

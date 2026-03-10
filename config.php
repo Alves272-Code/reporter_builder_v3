@@ -4,6 +4,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
+
 $rb_db_error = '';
 $rb_ligacao = false;
 $rb_liga_paths = array(
@@ -37,11 +41,39 @@ function rb_db() {
     return $ligacao;
 }
 
-function rb_current_user() {
-    if (isset($_SESSION['UtilizadorEmail']) && trim((string)$_SESSION['UtilizadorEmail']) !== '') {
-        return trim((string)$_SESSION['UtilizadorEmail']);
+function rb_session_pick($keys = array()) {
+    foreach ($keys as $key) {
+        if (isset($_SESSION[$key])) {
+            $value = trim((string)$_SESSION[$key]);
+            if ($value !== '') return $value;
+        }
     }
     return '';
+}
+
+function rb_current_user() {
+    $direct = rb_session_pick(array('UtilizadorEmail', 'utilizadorEmail', 'Email', 'email', 'UserEmail', 'user_email'));
+    if ($direct !== '') return $direct;
+
+    foreach ($_SESSION as $key => $value) {
+        if (!is_scalar($value)) continue;
+        $candidate = trim((string)$value);
+        if ($candidate === '') continue;
+        if (preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]+$/', $candidate)) {
+            $k = strtolower((string)$key);
+            if (strpos($k, 'email') !== false || strpos($k, 'utilizador') !== false || strpos($k, 'user') !== false) {
+                return $candidate;
+            }
+        }
+    }
+
+    return '';
+}
+
+function rb_current_user_name() {
+    $name = rb_session_pick(array('UtilizadorNome', 'utilizadorNome', 'Nome', 'nome', 'UserName', 'username'));
+    if ($name !== '') return $name;
+    return rb_current_user();
 }
 
 function rb_base_url() {

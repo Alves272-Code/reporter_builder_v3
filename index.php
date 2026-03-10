@@ -1,11 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
-$user_name = '';
-if (isset($_SESSION['UtilizadorNome']) && trim((string)$_SESSION['UtilizadorNome']) !== '') {
-    $user_name = (string)$_SESSION['UtilizadorNome'];
-} elseif (isset($_SESSION['UtilizadorEmail']) && trim((string)$_SESSION['UtilizadorEmail']) !== '') {
-    $user_name = (string)$_SESSION['UtilizadorEmail'];
-}
+$user_name = rb_current_user_name();
 $rb_has_db = empty($rb_db_error);
 $rb_boot_report = null;
 $rb_boot_report_error = null;
@@ -211,7 +206,7 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
                         <button type="button" onclick="refreshPreview()" class="btn btn-action-laranja"><i class="fa fa-eye"></i> Visualizar</button>
                         <button type="button" onclick="exportarExcel()" class="btn btn-secondary"><i class="fa fa-file-excel-o"></i> Excel</button>
                         <button type="button" onclick="exportarCSV()" class="btn btn-secondary"><i class="fa fa-file-text-o"></i> CSV</button>
-                        <button type="button" onclick="saveReport()" class="btn btn-info text-white"><i class="fa fa-save"></i> Guardar</button>
+                        <button type="button" id="save-report-btn" onclick="saveReport()" class="btn btn-info text-white"><i class="fa fa-save"></i> Guardar</button>
                     </div>
                 </div>
             </div>
