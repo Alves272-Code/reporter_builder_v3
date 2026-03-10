@@ -5,6 +5,8 @@ let currentLimit = 50;
 let totalPages = 1;
 let currentReportId = null;
 let currentReportOwner = true;
+let currentReportSharedView = false;
+let forceCopyLockedFromServer = false;
 window.RB_FIELD_META = window.RB_FIELD_META || {};
 
 function escapeHtml(str) {
@@ -623,6 +625,24 @@ function exportarCSV() {
     });
 }
 
+
+function rbShouldForceCopy() {
+    return !!forceCopyLockedFromServer || (!currentReportOwner) || !!currentReportSharedView;
+}
+
+function rbConfigureSaveButton() {
+    const saveBtn = document.getElementById('save-report-btn');
+    if (!saveBtn) return;
+
+    if (rbShouldForceCopy()) {
+        saveBtn.innerHTML = '<i class="fa fa-copy"></i> Criar cópia';
+        saveBtn.onclick = function(){ createReportCopy(); };
+    } else {
+        saveBtn.innerHTML = '<i class="fa fa-save"></i> Guardar';
+        saveBtn.onclick = function(){ saveReport(false); };
+    }
+}
+
 function saveReport(asCopy) {
     asCopy = !!asCopy;
     if (selectedTables.length === 0 || selectedFields.size === 0) {
@@ -636,7 +656,7 @@ function saveReport(asCopy) {
         return;
     }
 
-    if (!currentReportOwner && currentReportId && !asCopy) {
+    if (rbShouldForceCopy() && currentReportId && !asCopy) {
         alert('Este relatório foi partilhado consigo. Use “Criar cópia”.');
         return;
     }
@@ -661,6 +681,12 @@ function saveReport(asCopy) {
     .then(function(resp) {
         if (!resp.success) throw new Error(resp.message || 'Erro ao guardar');
         if (resp.report_id) currentReportId = Number(resp.report_id);
+        if (asCopy) {
+            currentReportOwner = true;
+            currentReportSharedView = false;
+            forceCopyLockedFromServer = false;
+            rbConfigureSaveButton();
+        }
         if (window.RB_BOOT_REPORT && typeof window.RB_BOOT_REPORT === 'object') {
             window.RB_BOOT_REPORT.name = name;
             window.RB_BOOT_REPORT.description = description;
@@ -694,7 +720,7 @@ function applyLoadedConfig(config) {
 
     config = normalizedConfig;
 
-    clearAll(false);
+    clearAll(false, false);
 
     currentPage = Number(config.page || 1);
     currentLimit = Number(config.limit || 50);
@@ -767,14 +793,19 @@ function applyLoadedConfig(config) {
     loadNextTable();
 }
 
-function clearAll(withConfirm) {
+function clearAll(withConfirm, resetReportContext) {
     if (typeof withConfirm === 'undefined') withConfirm = true;
+    if (typeof resetReportContext === 'undefined') resetReportContext = true;
     if (withConfirm && !confirm('Deseja limpar toda a configuração atual?')) return;
 
     selectedTables = [];
     selectedFields = new Set();
-    currentReportId = null;
-    currentReportOwner = true;
+    if (resetReportContext) {
+        currentReportId = null;
+        currentReportOwner = true;
+        currentReportSharedView = false;
+        forceCopyLockedFromServer = false;
+    }
     currentPage = 1;
     currentLimit = 50;
     totalPages = 1;
@@ -794,11 +825,7 @@ function clearAll(withConfirm) {
 
     try { $('#table-select').val('').trigger('change'); } catch (e) {}
 
-    const saveBtn = document.getElementById('save-report-btn');
-    if (saveBtn) {
-        saveBtn.innerHTML = '<i class="fa fa-save"></i> Guardar';
-        saveBtn.onclick = function(){ saveReport(false); };
-    }
+    rbConfigureSaveButton();
 }
 
 $(document).ready(function() {
@@ -809,22 +836,18 @@ $(document).ready(function() {
 
     initTableSelector();
 
+    forceCopyLockedFromServer = !!window.RB_FORCE_COPY_MODE;
+    rbConfigureSaveButton();
+
     setTimeout(function() {
         try {
             if (window.RB_BOOT_REPORT) {
                 const boot = window.RB_BOOT_REPORT;
                 currentReportId = boot && boot.reportId ? Number(boot.reportId) : null;
                 currentReportOwner = !(boot && boot.isOwner === false);
-                const saveBtn = document.getElementById('save-report-btn');
-                if (saveBtn) {
-                    if (currentReportOwner) {
-                        saveBtn.innerHTML = '<i class="fa fa-save"></i> Guardar';
-                        saveBtn.onclick = function(){ saveReport(false); };
-                    } else {
-                        saveBtn.innerHTML = '<i class="fa fa-copy"></i> Criar cópia';
-                        saveBtn.onclick = function(){ createReportCopy(); };
-                    }
-                }
+                currentReportSharedView = !!(boot && boot.isSharedView === true);
+                forceCopyLockedFromServer = !!window.RB_FORCE_COPY_MODE || currentReportSharedView;
+                rbConfigureSaveButton();
                 const bootConfig = (boot && typeof boot === 'object' && !Array.isArray(boot))
                     ? (boot.config ?? boot.rawConfig ?? boot)
                     : boot;
