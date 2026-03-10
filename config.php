@@ -77,13 +77,15 @@ function rb_current_user_name() {
 }
 
 function rb_require_auth($mode = 'json') {
-    $user = rb_current_user();
-    if ($user !== '') {
-        return $user;
+    if (isset($_SESSION['UtilizadorEmail'])) {
+        $email = trim((string)$_SESSION['UtilizadorEmail']);
+        if ($email !== '') {
+            return $email;
+        }
     }
 
     if ($mode === 'page') {
-        $target = '../index.php';
+        $target = is_file(__DIR__ . '/login_form.php') ? 'login_form.php' : '../login_form.php';
         if (!headers_sent()) {
             header('Location: ' . $target);
         }
