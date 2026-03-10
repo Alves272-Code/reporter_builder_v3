@@ -177,6 +177,53 @@ function rb_table_has_column($db, $table, $column) {
     return $res && mysqli_num_rows($res) > 0;
 }
 
+function rb_ensure_report_shares_table() {
+    $db = rb_db();
+
+    $sql = "
+    CREATE TABLE IF NOT EXISTS report_shares (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        report_id INT NOT NULL,
+        shared_by VARCHAR(255) NOT NULL,
+        shared_with VARCHAR(255) NOT NULL,
+        created_at DATETIME NOT NULL,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        UNIQUE KEY uniq_report_user (report_id, shared_with),
+        INDEX idx_shared_with (shared_with),
+        INDEX idx_report_id (report_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ";
+
+    mysqli_query($db, $sql);
+}
+
+function rb_get_active_users($db, $excludeEmail = '') {
+    $out = array();
+    if (!rb_table_has_column($db, 'utilizadores', 'Email')) {
+        return $out;
+    }
+
+    $nameCol = rb_table_has_column($db, 'utilizadores', 'Nome') ? 'Nome' : (rb_table_has_column($db, 'utilizadores', 'Utilizador') ? 'Utilizador' : 'Email');
+    $hasAtivo = rb_table_has_column($db, 'utilizadores', 'Ativo');
+
+    $sql = "SELECT `Email` AS email, `$nameCol` AS nome FROM utilizadores";
+    if ($hasAtivo) {
+        $sql .= " WHERE (Ativo = 1 OR Ativo = '1' OR LOWER(CAST(Ativo AS CHAR)) = 'ativo')";
+    }
+    $sql .= " ORDER BY `$nameCol` ASC";
+
+    $rows = rb_prepare_and_fetch_all($db, $sql, array());
+    foreach ($rows as $r) {
+        $email = isset($r['email']) ? trim((string)$r['email']) : '';
+        if ($email === '') continue;
+        if ($excludeEmail !== '' && strcasecmp($email, $excludeEmail) === 0) continue;
+        $nome = isset($r['nome']) && trim((string)$r['nome']) !== '' ? trim((string)$r['nome']) : $email;
+        $out[] = array('email' => $email, 'name' => $nome);
+    }
+
+    return $out;
+}
+
 function rb_translate_filter_operator($op, $value) {
     $op = strtolower(trim((string)$op));
 

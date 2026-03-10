@@ -636,9 +636,8 @@ function saveReport() {
     }
 
     if (!currentReportOwner && currentReportId) {
-        const criarCopia = confirm('Este relatório é partilhado e não é seu. Pretende guardar como novo relatório seu?');
-        if (!criarCopia) return;
-        currentReportId = null;
+        alert('Este relatório foi partilhado consigo. Pode visualizar e atualizar, mas só o proprietário pode alterar/guardar.');
+        return;
     }
 
     const nomeAtual = (window.RB_BOOT_REPORT && window.RB_BOOT_REPORT.name) ? window.RB_BOOT_REPORT.name : '';

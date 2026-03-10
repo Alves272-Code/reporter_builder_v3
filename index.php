@@ -32,7 +32,17 @@ if ($rb_has_db && isset($_GET['report_id']) && (int)$_GET['report_id'] > 0) {
             $hasShareToken = array_key_exists('share_token', $row);
             $isOwner = ($hasCreatedBy && $user !== '' && (string)$row['created_by'] === $user);
             $isSharedAccess = ($share_token !== '' && $hasShareToken && hash_equals((string)$row['share_token'], $share_token));
-            $canAccess = $isSharedAccess || $isOwner || (!$hasCreatedBy && $user !== '');
+            $isSharedWithUser = false;
+            if ($user !== '') {
+                rb_ensure_report_shares_table();
+                $shareRow = rb_prepare_and_fetch_one(
+                    $db,
+                    "SELECT id FROM report_shares WHERE report_id = ? AND shared_with = ? AND active = 1",
+                    array($report_id, $user)
+                );
+                $isSharedWithUser = $shareRow ? true : false;
+            }
+            $canAccess = $isSharedAccess || $isOwner || $isSharedWithUser || (!$hasCreatedBy && $user !== '');
 
             if (!$canAccess) {
                 $rb_boot_report_error = 'Relatório não encontrado';
